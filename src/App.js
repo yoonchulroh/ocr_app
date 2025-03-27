@@ -529,6 +529,14 @@ function App() {
     setNewRegionName(e.target.value);
   };
 
+  // Add this function to handle key press events
+  const handleRegionNameKeyPress = (e) => {
+    // Check if Enter key was pressed
+    if (e.key === 'Enter') {
+      saveRegionName();
+    }
+  };
+
   // Export results as CSV
   const exportToCSV = () => {
     // Create CSV header with a column for each region
@@ -698,7 +706,7 @@ function App() {
 
   return (
     <div className="App">
-      <h1>OCR Image to Text</h1>
+      <h1>OCR for Grading</h1>
       
       {/* Image Selection */}
       <div className="image-selection">
@@ -728,7 +736,7 @@ function App() {
                 onClick={() => handleImageSelect(index)}
               >
                 <img src={image.url} alt={`Thumbnail ${index + 1}`} />
-                <span>Image {index + 1}</span>
+                <span>{image.filename || `Image ${index + 1}`}</span>
                 <button 
                   className="delete-image-button"
                   onClick={(e) => handleDeleteImage(index, e)}
@@ -768,6 +776,7 @@ function App() {
                             value={newRegionName}
                             onChange={handleRegionNameChange}
                             onClick={(e) => e.stopPropagation()}
+                            onKeyDown={handleRegionNameKeyPress}
                             autoFocus
                           />
                           <div className="edit-buttons">
@@ -893,6 +902,13 @@ function App() {
               disabled={isLoading || !images[currentImageIndex]?.url}
             >
               {isLoading ? 'Processing...' : 'Run OCR on All Regions'}
+            </button>
+            <button 
+              className="run-all-images-button"
+              onClick={handleRunOCRAll}
+              disabled={isLoading || images.length === 0}
+            >
+              {isLoading ? 'Processing...' : 'Run OCR on All Images'}
             </button>
             <button 
               className="export-button"

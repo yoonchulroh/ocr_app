@@ -194,6 +194,11 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
 }
 
 .export-container {
@@ -558,4 +563,25 @@
   border-radius: 5px;
   max-width: 600px;
   color: #666;
+}
+
+.run-all-images-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  min-width: 200px;
+}
+
+.run-all-images-button:hover {
+  background-color: #218838;
+}
+
+.run-all-images-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
 }
