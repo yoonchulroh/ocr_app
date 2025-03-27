@@ -89,6 +89,9 @@ function App() {
       }));
       setImages(prev => [...prev, ...newImages]);
       setCurrentImageIndex(prev => prev + newImages.length - 1);
+      
+      // Reset the file input value so the same file can be selected again
+      e.target.value = null;
     }
   };
 
@@ -664,25 +667,59 @@ function App() {
     }
   }, [images[currentImageIndex]?.url, regions, currentRegionIndex, clickMode]);
 
+  // Update the handleDeleteImage function to properly handle deleting the last image
+  const handleDeleteImage = (indexToDelete, e) => {
+    e.stopPropagation(); // Prevent triggering image selection when clicking delete
+    
+    // Update images array
+    setImages(prev => {
+      const newImages = [...prev];
+      newImages.splice(indexToDelete, 1);
+      return newImages;
+    });
+    
+    // When deleting the last image, reset states
+    if (images.length <= 1) {
+      setCurrentImageIndex(0);
+      setText('');
+      // Reset coordinates to default for current region
+      setCoordinates({ minX: 0, minY: 0, maxX: 0, maxY: 0 });
+      // Reset image dimensions
+      setImageDimensions({ width: 0, height: 0 });
+    } 
+    // Otherwise handle normal deletion
+    else if (indexToDelete <= currentImageIndex) {
+      setCurrentImageIndex(prev => {
+        const newIndex = prev - 1;
+        return Math.max(0, Math.min(newIndex, images.length - 2));
+      });
+    }
+  };
+
   return (
     <div className="App">
       <h1>OCR Image to Text</h1>
       
       {/* Image Selection */}
-      {images.length > 0 && (
-        <div className="image-selection">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
-            multiple
-            style={{ display: 'none' }}
-            id="fileInput"
-          />
-          <label htmlFor="fileInput" className="file-upload-button">
-            Choose Files
-          </label>
-          
+      <div className="image-selection">
+        <div className="image-selection-header">
+          <h2>Select Image</h2>
+          <div className="file-input-container">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              multiple
+              style={{ display: 'none' }}
+              id="fileInput"
+            />
+            <label htmlFor="fileInput" className="file-upload-button">
+              Choose Files
+            </label>
+          </div>
+        </div>
+        
+        {images.length > 0 && (
           <div className="image-thumbnails">
             {images.map((image, index) => (
               <div
@@ -692,226 +729,236 @@ function App() {
               >
                 <img src={image.url} alt={`Thumbnail ${index + 1}`} />
                 <span>Image {index + 1}</span>
+                <button 
+                  className="delete-image-button"
+                  onClick={(e) => handleDeleteImage(index, e)}
+                  title="Delete image"
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Region and Coordinate Controls Container */}
-      {images.length > 0 && (
-        <div className="region-coordinate-container">
-          {/* Region Selection - now shared across all images */}
-          {regions.length > 0 && (
-            <div className="region-selection">
-              <h3>Regions (Shared Across All Images):</h3>
-              <div className="region-controls">
-                <button onClick={addRegion} className="control-button">Add Region</button>
-                <button onClick={deleteRegion} className="control-button">Delete Region</button>
-              </div>
-              <div className="region-tabs">
-                {regions.map((region, index) => (
-                  <div 
-                    key={index}
-                    className={`region-tab ${index === currentRegionIndex ? 'selected' : ''}`}
-                  >
-                    {editingRegionName === index ? (
-                      <div className="region-name-edit">
-                        <input
-                          type="text"
-                          value={newRegionName}
-                          onChange={handleRegionNameChange}
-                          onClick={(e) => e.stopPropagation()}
-                          autoFocus
-                        />
-                        <div className="edit-buttons">
+      {/* Make other sections conditional on images.length > 0 */}
+      {images.length > 0 ? (
+        <>
+          {/* Region and Coordinate Controls Container */}
+          <div className="region-coordinate-container">
+            {/* Region Selection - now shared across all images */}
+            {regions.length > 0 && (
+              <div className="region-selection">
+                <h3>Regions (Shared Across All Images):</h3>
+                <div className="region-controls">
+                  <button onClick={addRegion} className="control-button">Add Region</button>
+                  <button onClick={deleteRegion} className="control-button">Delete Region</button>
+                </div>
+                <div className="region-tabs">
+                  {regions.map((region, index) => (
+                    <div 
+                      key={index}
+                      className={`region-tab ${index === currentRegionIndex ? 'selected' : ''}`}
+                    >
+                      {editingRegionName === index ? (
+                        <div className="region-name-edit">
+                          <input
+                            type="text"
+                            value={newRegionName}
+                            onChange={handleRegionNameChange}
+                            onClick={(e) => e.stopPropagation()}
+                            autoFocus
+                          />
+                          <div className="edit-buttons">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                saveRegionName();
+                              }}
+                              className="save-button"
+                            >
+                              ✓
+                            </button>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                cancelRegionNameEdit();
+                              }}
+                              className="cancel-button"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div 
+                          className="region-name-display"
+                          onClick={() => handleRegionSelect(index)}
+                        >
+                          <span>{region.name}</span>
                           <button 
+                            className="edit-name-button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              saveRegionName();
+                              startEditingRegionName(index);
                             }}
-                            className="save-button"
                           >
-                            ✓
-                          </button>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              cancelRegionNameEdit();
-                            }}
-                            className="cancel-button"
-                          >
-                            ✕
+                            ✎
                           </button>
                         </div>
-                      </div>
-                    ) : (
-                      <div 
-                        className="region-name-display"
-                        onClick={() => handleRegionSelect(index)}
-                      >
-                        <span>{region.name}</span>
-                        <button 
-                          className="edit-name-button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            startEditingRegionName(index);
-                          }}
-                        >
-                          ✎
-                        </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Coordinate Inputs */}
+            <div className="coordinates-input">
+              <h3>Enter Coordinates for {regions[currentRegionIndex].name}</h3>
+              
+              {/* Add click mode toggle button */}
+              <div className="click-mode-toggle">
+                <button 
+                  onClick={() => setClickMode(clickMode === "none" ? "ready" : "none")}
+                  className={clickMode !== "none" ? "active" : ""}
+                >
+                  {clickMode !== "none" ? "Disable Click Selection" : "Enable Click Selection"}
+                </button>
+                {clickMode === "ready" && 
+                  <p className="click-instruction">Click on image to set top-left corner</p>
+                }
+                {clickMode === "first_click_done" && 
+                  <p className="click-instruction">Click on image to set bottom-right corner</p>
+                }
+              </div>
+              
+              <div className="coordinate-group">
+                <div>
+                  <label>Min X:</label>
+                  <input
+                    type="number"
+                    name="minX"
+                    value={coordinates.minX}
+                    onChange={handleCurrentRegionCoordinatesChange}
+                    placeholder="Min X"
+                  />
+                </div>
+                <div>
+                  <label>Max X:</label>
+                  <input
+                    type="number"
+                    name="maxX"
+                    value={coordinates.maxX}
+                    onChange={handleCurrentRegionCoordinatesChange}
+                    placeholder="Max X"
+                  />
+                </div>
+                <div>
+                  <label>Min Y:</label>
+                  <input
+                    type="number"
+                    name="minY"
+                    value={coordinates.minY}
+                    onChange={handleCurrentRegionCoordinatesChange}
+                    placeholder="Min Y"
+                  />
+                </div>
+                <div>
+                  <label>Max Y:</label>
+                  <input
+                    type="number"
+                    name="maxY"
+                    value={coordinates.maxY}
+                    onChange={handleCurrentRegionCoordinatesChange}
+                    placeholder="Max Y"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* OCR Buttons */}
+          <div className="run-ocr">
+            <button 
+              onClick={handleRunOCR} 
+              disabled={isLoading || !images[currentImageIndex]?.url}
+            >
+              {isLoading ? 'Processing...' : 'Run OCR on Current Region'}
+            </button>
+            <button 
+              className="run-all-button"
+              onClick={handleRunOCRAllRegions}
+              disabled={isLoading || !images[currentImageIndex]?.url}
+            >
+              {isLoading ? 'Processing...' : 'Run OCR on All Regions'}
+            </button>
+            <button 
+              className="export-button"
+              onClick={exportToCSV}
+              disabled={!images[currentImageIndex]?.results?.[currentRegionIndex] || !images[currentImageIndex]?.url}
+            >
+              Export to CSV
+            </button>
+          </div>
+
+          {/* Image Previews Container */}
+          <div className="image-preview-container">
+            {/* Original Image with Rectangle */}
+            <div className="original-image-container">
+              <h2>Original Image:</h2>
+              <canvas 
+                ref={canvasRef} 
+                onClick={handleCanvasClick}
+              ></canvas>
+              <div className="image-dimensions">
+                Size: {imageDimensions.width} x {imageDimensions.height} pixels
+              </div>
+            </div>
+
+            {/* Cropped Image Preview */}
+            {images[currentImageIndex]?.results?.[currentRegionIndex] && (
+              <div className="image-preview">
+                <h2>Cropped {regions[currentRegionIndex].name}:</h2>
+                {images[currentImageIndex].results[currentRegionIndex].error ? (
+                  <div className="error-message">
+                    <p>Error: Unable to crop region due to invalid coordinates</p>
+                    <p>Please check that:</p>
+                    <ul>
+                      <li>Min values are less than Max values</li>
+                      <li>Coordinates are within image boundaries</li>
+                      <li>The region has a valid area (width and height &gt; 0)</li>
+                    </ul>
                   </div>
-                ))}
+                ) : (
+                  <img 
+                    src={images[currentImageIndex].results[currentRegionIndex].croppedImageData} 
+                    alt="Cropped" 
+                    style={{ maxWidth: '400px' }} 
+                  />
+                )}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Coordinate Inputs */}
-          <div className="coordinates-input">
-            <h3>Enter Coordinates for {regions[currentRegionIndex].name}</h3>
-            
-            {/* Add click mode toggle button */}
-            <div className="click-mode-toggle">
-              <button 
-                onClick={() => setClickMode(clickMode === "none" ? "ready" : "none")}
-                className={clickMode !== "none" ? "active" : ""}
-              >
-                {clickMode !== "none" ? "Disable Click Selection" : "Enable Click Selection"}
-              </button>
-              {clickMode === "ready" && 
-                <p className="click-instruction">Click on image to set top-left corner</p>
-              }
-              {clickMode === "first_click_done" && 
-                <p className="click-instruction">Click on image to set bottom-right corner</p>
-              }
-            </div>
-            
-            <div className="coordinate-group">
-              <div>
-                <label>Min X:</label>
-                <input
-                  type="number"
-                  name="minX"
-                  value={coordinates.minX}
-                  onChange={handleCurrentRegionCoordinatesChange}
-                  placeholder="Min X"
-                />
+            {/* Extracted Text */}
+            {images[currentImageIndex]?.results?.[currentRegionIndex] && (
+              <div className="result">
+                <h2>Extracted Text from {regions[currentRegionIndex].name}:</h2>
+                {images[currentImageIndex].results[currentRegionIndex].error ? (
+                  <div className="error-message">
+                    {images[currentImageIndex].results[currentRegionIndex].text}
+                  </div>
+                ) : (
+                  <pre>{images[currentImageIndex].results[currentRegionIndex].text}</pre>
+                )}
               </div>
-              <div>
-                <label>Max X:</label>
-                <input
-                  type="number"
-                  name="maxX"
-                  value={coordinates.maxX}
-                  onChange={handleCurrentRegionCoordinatesChange}
-                  placeholder="Max X"
-                />
-              </div>
-              <div>
-                <label>Min Y:</label>
-                <input
-                  type="number"
-                  name="minY"
-                  value={coordinates.minY}
-                  onChange={handleCurrentRegionCoordinatesChange}
-                  placeholder="Min Y"
-                />
-              </div>
-              <div>
-                <label>Max Y:</label>
-                <input
-                  type="number"
-                  name="maxY"
-                  value={coordinates.maxY}
-                  onChange={handleCurrentRegionCoordinatesChange}
-                  placeholder="Max Y"
-                />
-              </div>
-            </div>
+            )}
           </div>
-        </div>
-      )}
-
-      {/* OCR Buttons */}
-      {images.length > 0 && (
-        <div className="run-ocr">
-          <button 
-            onClick={handleRunOCR} 
-            disabled={isLoading || !images[currentImageIndex]?.url}
-          >
-            {isLoading ? 'Processing...' : 'Run OCR on Current Region'}
-          </button>
-          <button 
-            className="run-all-button"
-            onClick={handleRunOCRAllRegions}
-            disabled={isLoading || !images[currentImageIndex]?.url}
-          >
-            {isLoading ? 'Processing...' : 'Run OCR on All Regions'}
-          </button>
-          <button 
-            className="export-button"
-            onClick={exportToCSV}
-            disabled={!images[currentImageIndex]?.results?.[currentRegionIndex] || !images[currentImageIndex]?.url}
-          >
-            Export to CSV
-          </button>
-        </div>
-      )}
-
-      {/* Image Previews Container */}
-      {images.length > 0 && (
-        <div className="image-preview-container">
-          {/* Original Image with Rectangle */}
-          <div className="original-image-container">
-            <h2>Original Image:</h2>
-            <canvas 
-              ref={canvasRef} 
-              onClick={handleCanvasClick}
-            ></canvas>
-            <div className="image-dimensions">
-              Size: {imageDimensions.width} x {imageDimensions.height} pixels
-            </div>
-          </div>
-
-          {/* Cropped Image Preview */}
-          {images[currentImageIndex]?.results?.[currentRegionIndex] && (
-        <div className="image-preview">
-              <h2>Cropped {regions[currentRegionIndex].name}:</h2>
-              {images[currentImageIndex].results[currentRegionIndex].error ? (
-                <div className="error-message">
-                  <p>Error: Unable to crop region due to invalid coordinates</p>
-                  <p>Please check that:</p>
-                  <ul>
-                    <li>Min values are less than Max values</li>
-                    <li>Coordinates are within image boundaries</li>
-                    <li>The region has a valid area (width and height &gt; 0)</li>
-                  </ul>
-                </div>
-              ) : (
-                <img 
-                  src={images[currentImageIndex].results[currentRegionIndex].croppedImageData} 
-                  alt="Cropped" 
-                  style={{ maxWidth: '400px' }} 
-                />
-              )}
-            </div>
-          )}
-
-          {/* Extracted Text */}
-          {images[currentImageIndex]?.results?.[currentRegionIndex] && (
-            <div className="result">
-              <h2>Extracted Text from {regions[currentRegionIndex].name}:</h2>
-              {images[currentImageIndex].results[currentRegionIndex].error ? (
-                <div className="error-message">
-                  {images[currentImageIndex].results[currentRegionIndex].text}
-                </div>
-              ) : (
-                <pre>{images[currentImageIndex].results[currentRegionIndex].text}</pre>
-              )}
-            </div>
-          )}
+        </>
+      ) : (
+        <div className="no-images-message">
+          <p>No images uploaded. Please select one or more images to begin.</p>
         </div>
       )}
 
